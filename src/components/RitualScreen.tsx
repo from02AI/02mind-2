@@ -408,7 +408,7 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
       <WaveBackground /> {/* Render the imported component */}
 
       {/* 3. Semi-transparent white overlay - covers the static waves */}
-      <div className="absolute inset-0 w-full h-full bg-white bg-opacity-30 z-10"></div>
+      <div className="absolute inset-0 w-full h-full bg-white bg-opacity-10 z-10"></div>
 
       {/* 4. All your existing RitualScreen content - now sits on top of the overlay */}
       {/* This wrapper helps manage z-stacking for content over the overlay */}
@@ -416,7 +416,7 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
         
         {/* Back button - now inside the content wrapper */}
         <button
-          className="absolute top-6 left-6 px-4 py-2 bg-slate-700 text-white rounded z-30" 
+          className="absolute top-6 left-6 px-2 py-1 bg-white text-[#b48559] rounded z-30"
           onClick={onGoBack}
         >
           Back
@@ -440,27 +440,27 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
           >
             <path
               d="M0 0 C75 25 115 10 180 30 S240 5 310 25 S350 5 375 10 V812 H0 Z"
-              fill="#398db0"
+              fill="white"
               fillOpacity="0.95"
             />
           </svg>
         </div>
 
         {/* Centered text content - now inside the content wrapper */}
-        <div className="relative flex flex-col items-center justify-center p-4 text-center pointer-events-none z-20"> {/* z-20 here is fine within its parent context */}
-          <h2 className="font-nunito text-4xl font-bold text-slate-700 text-center mb-14">{screenTitle}</h2>
+        <div className="relative flex flex-col items-center justify-center p-4 text-center pointer-events-none z-20 pb-10"> {/* Added pb-10 */}
+          <h2 className="font-nunito text-4xl font-extrabold text-slate-700 text-center mb-20">{screenTitle}</h2>
           
-          {isLoadingAIRitual && <p>Loading ritual...</p>}
+          {isLoadingAIRitual && <p>Crafting an unique practice for you</p>}
           {ritualError && <p className="text-red-500">Error: {ritualError}</p>}
 
           {!isLoadingAIRitual && !ritualError && currentRitualPractices.length > 0 && (
             <>
               {currentRitualTitles.length > 0 && (
-                <h3 className={`font-nunito text-2xl font-semibold text-slate-700 mb-2 transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
+                <h3 className={`font-nunito text-2xl font-extrabold text-slate-700 mb-2 transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
                   {currentRitualTitles[currentStepIndex]}
                 </h3>
               )}
-              <p className={`font-nunito text-2xl text-slate-600 mt-2 mx-6 transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
+              <p className={`font-nunito text-2xl text-slate-700 mt-2 mx-6 font-semibold transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
                 {currentRitualPractices[currentStepIndex]}
               </p>
             </>
@@ -481,14 +481,14 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
         {/* Test button - now inside the content wrapper */}
         <button
           ref={startButtonRef}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-700 text-white rounded z-50"
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 px-2 py-2 bg-slate-700 text-white rounded-full z-50 w-20 h-20 text-xl font-bold shadow-md"
           onClick={(e) => {
             e.stopPropagation();
             console.log("--- REACT Button Clicked ---");
             setIsPracticeActive(!isPracticeActive);
           }}
         >
-          {isPracticeActive ? "Reset Practice" : "Start Practice"}
+          {isPracticeActive ? "Reset" : "Start"}
         </button>
       </div>
 

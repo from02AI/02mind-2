@@ -30,7 +30,7 @@ const WaveBackground: React.FC = () => (
       <path d="M0 580 C70 595 120 570 170 583 S260 593 310 575 S355 588 375 580 V812 H0 Z" fill="#E1B258" />
       
       {/* 7th wave (deepest) - Baseline Y ~696. Undulates +/- 15 */}
-      <path d="M0 696 C60 711 110 686 160 699 S250 709 300 691 S350 704 375 696 V812 H0 Z" fill="#D98C2B" />
+      <path d="M0 696 C60 711 110 686 160 699 S250 709 300 691 S350 704 375 696 V812 H0 Z" fill="#b48559" />
 
     </svg>
   </div>

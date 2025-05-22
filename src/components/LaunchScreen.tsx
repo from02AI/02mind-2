@@ -12,10 +12,7 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
   const handleButtonClick = (type: string) => {
     console.log(`Button clicked: ${type}`);
     // Add event.stopPropagation() equivalent for direct function calls
-    // Force a small timeout to ensure state updates happen
-    setTimeout(() => {
-      onSelectRitual(type);
-    }, 10);
+    onSelectRitual(type);
   };
   
   useEffect(() => {
@@ -45,22 +42,19 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
 
   return (
     <div className="relative flex flex-col items-center justify-center h-[100vh] overflow-hidden overscroll-none touch-none py-4 px-4 z-10 pb-8">
-      {/* Semi-transparent white overlay */}
-      <div className="absolute inset-0 bg-white opacity-0 z-0"></div>
-
       {/* Title section - adjust mb-6 to control spacing to buttons */}
-      <div className="flex-none mb-8">
-        <h1 className="font-nunito text-3xl md:text-3xl font-bold text-slate-800 text-center mb-8">
-          Ready for your<br />
-          1-min mindful reset?
+      <div className="flex-none mb-12">
+        <h1 className="font-nunito text-4xl font-extrabold text-slate-700 text-center mb-14">
+        1-Minute <br>
+        </br>Mindful Boost  
         </h1>
-        <p className="font-nunito text-xl text-slate-700 text-center">What do you need now?</p>
+        <p className="font-nunito text-xl text-slate-700 text-center font-extrabold">What do you need now?</p>
       </div>
       
       <div className="flex-none flex flex-col items-center w-full">
         {/* Primary Button */}
         <button
-          className="rounded-full bg-amber-700 border-2 border-amber-700 text-white py-2.5 px-8 text-base font-semibold mx-auto w-56 shadow-md hover:bg-amber-800 transition z-20"
+          className="rounded-full bg-[#b48559] border-2 border-[#b48559] text-white py-3.5 px-10 text-xl font-extrabold mx-auto shadow-md hover:bg-amber-800 transition z-20"
           onClick={(e) => {
             e.stopPropagation();
             console.log("Primary button clicked directly");
@@ -73,7 +67,7 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
         {/* Secondary Button Group - 2×2 Grid - adjust mt-3.5 to control spacing from main button */}
         <div className="grid grid-cols-2 gap-2.5 w-full max-w-[320px] mt-8 z-20">
           <button
-            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-amber-900 py-2 px-3 text-base font-semibold hover:bg-amber-50 hover:border-amber-300 transition"
+            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-[#9e6a39] py-3 px-3 text-lg font-extrabold hover:bg-amber-50 hover:border-amber-300 transition"
             onClick={(e) => {
               e.stopPropagation();
               handleButtonClick('stress');
@@ -82,7 +76,7 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
             Stress Relief
           </button>
           <button
-            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-amber-900 py-2 px-3 text-base font-semibold hover:bg-amber-50 hover:border-amber-300 transition"
+            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-[#9e6a39] py-3 px-3 text-lg font-extrabold hover:bg-amber-50 hover:border-amber-300 transition"
             onClick={(e) => {
               e.stopPropagation();
               handleButtonClick('energy');
@@ -91,7 +85,7 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
             Energy Boost
           </button>
           <button
-            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-amber-900 py-2 px-3 text-base font-semibold hover:bg-amber-50 hover:border-amber-300 transition"
+            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-[#9e6a39] py-3 px-3 text-lg font-extrabold hover:bg-amber-50 hover:border-amber-300 transition"
             onClick={(e) => {
               e.stopPropagation();
               handleButtonClick('focus');
@@ -100,7 +94,7 @@ const LaunchScreen: React.FC<LaunchScreenProps> = ({ onSelectRitual }) => {
             Focus
           </button>
           <button
-            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-amber-900 py-2 px-3 text-base font-semibold hover:bg-amber-50 hover:border-amber-300 transition"
+            className="rounded-full bg-amber-50/80 border-2 border-amber-200 text-[#9e6a39] py-3 px-3 text-lg font-extrabold hover:bg-amber-50 hover:border-amber-300 transition"
             onClick={(e) => {
               e.stopPropagation();
               handleButtonClick('surprise');
