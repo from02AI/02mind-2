@@ -160,6 +160,7 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
   
   // State declarations
   const [isPracticeActive, setIsPracticeActive] = useState(false);
+  const [showFinaleScreen, setShowFinaleScreen] = useState(false); // State for finale screen
   const blueWaveContainerRef = useRef<HTMLDivElement>(null);
   const [currentRitualPractices, setCurrentRitualPractices] = useState<string[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -169,6 +170,15 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
   const [currentRitualTitles, setCurrentRitualTitles] = useState<string[]>([]);
   const [screenTitle, setScreenTitle] = useState("");
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  // State for content transitions
+  const [isFadingToFinale, setIsFadingToFinale] = useState(false);
+  const [isFadingInFinale, setIsFadingInFinale] = useState(false);
+
+  // Refs for transition timeouts
+  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeInTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const finaleTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for the finale screen timeout
 
   // Use a ref to track the type that has been initialized/fetched to prevent re-fetches
   // for the same type if the component re-renders or due to StrictMode.
@@ -179,15 +189,26 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
 
   // Effect to set the screen title and load ritual practices based on selectedRitualType
   useEffect(() => {
-    console.log(`RitualScreen: useEffect for selectedRitualType ACTIVATED. Current type: "${selectedRitualType}" at ${new Date().toLocaleTimeString()}`);
+    console.log(`RitualScreen: useEffect for selectedRitualType ACTIVATED. Current type: "${selectedRitualType}", Time: ${new Date().toLocaleTimeString()}`);
 
-    if (initializedTypeRef.current === selectedRitualType && selectedRitualType !== "daily") { // Allow daily to re-initialize if needed, but skip re-fetch for AI types if already initialized.
-      console.log(`>>> Skipping fetch for already initialized AI type: "${selectedRitualType}"`);
-      return;
+    // Clear any timers/intervals on ritual type change
+    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    if (fadeInTimerRef.current) clearTimeout(fadeInTimerRef.current);
+    if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+    if (finaleTimeoutRef.current) clearTimeout(finaleTimeoutRef.current);
+
+    // Only reset finale screen state if a ritual type is selected AND it's different from the initialized type
+    // This prevents the initial `true` state for testing from being immediately overwritten.
+    if (selectedRitualType && initializedTypeRef.current !== selectedRitualType) {
+      setShowFinaleScreen(false); 
+      setIsFadingToFinale(false); 
+      setIsFadingInFinale(false); 
+    } else if (!selectedRitualType) {
+      // If no ritual type is selected, reset everything
+      setShowFinaleScreen(false); 
+      setIsFadingToFinale(false); 
+      setIsFadingInFinale(false); 
     }
-    // For "daily" type, it's okay if it re-runs as it's local data and quick.
-    // Or, if you want to prevent even "daily" from re-running if initializedTypeRef.current === "daily", adjust the condition above.
-
 
     if (!selectedRitualType) {
       setScreenTitle("Mindfulness Ritual");
@@ -197,16 +218,18 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
       setRitualError(null);
       setIsPracticeActive(false);
       setCurrentStepIndex(0);
-      initializedTypeRef.current = null; 
-      setIsUsingFallback(false); 
+      initializedTypeRef.current = null;
+      setIsUsingFallback(false);
       return;
     }
 
     const displayName = ritualScreenTitles[selectedRitualType] || "Mindfulness Ritual";
     setScreenTitle(displayName);
     setCurrentStepIndex(0);
-    setIsPracticeActive(false); 
-    // Don't set setIsUsingFallback(false) here yet for AI types, do it before the fetch.
+    setIsPracticeActive(false);
+    setShowFinaleScreen(false); // Ensure finale screen is hidden
+    setIsFadingToFinale(false); // Ensure transition states are reset
+    setIsFadingInFinale(false); // Ensure transition states are reset
 
     if (selectedRitualType === "daily") {
       setCurrentRitualPractices(dailyRitualSequence);
@@ -227,26 +250,30 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
       // Replace "YOUR_VALID_OPENAI_API_KEY_HERE" with your actual OpenAI API key.
       // For development, you can hardcode it here TEMPORARILY.
       // For production, use environment variables to keep your key secure.
-      const apiKey = "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"; 
+      const apiKey = "import.meta.env.VITE_OPENAI_API_KEY";
       // Example of a placeholder often used in tutorials (DO NOT USE THIS EXAMPLE KEY FOR ACTUAL CALLS):
       const OPENAI_API_KEY_PLACEHOLDER = "sk-YOUR_OPENAI_API_KEY_HERE";
+      const OLD_EXAMPLE_KEY_PREFIX = "sk-proj-rJ2"; // Define the old example key prefix
+      const LEGACY_PLACEHOLDER = "YOUR_VALID_OPENAI_API_KEY_HERE"; // Define the legacy placeholder
 
       // Check if the apiKey is missing or is a placeholder/example key
       let useFallback = false;
       let errorMsg = "";
 
-      if (!apiKey || apiKey === "YOUR_VALID_OPENAI_API_KEY_HERE" || apiKey === OPENAI_API_KEY_PLACEHOLDER) {
+      const knownPlaceholders = [LEGACY_PLACEHOLDER, OPENAI_API_KEY_PLACEHOLDER];
+
+      if (!apiKey) {
           useFallback = true;
-          errorMsg = "API Key is missing or is a placeholder! Using fallback.";
-      } else if (typeof apiKey === 'string' && apiKey.startsWith("sk-proj-rJ2")) { // Check if it's a string and starts with the specific example prefix
-          // This condition checks against the specific example key you previously had hardcoded.
-           if (apiKey !== "YOUR_VALID_OPENAI_API_KEY_HERE") {
-                useFallback = true;
-                errorMsg = "It looks like you're using an example project key. Please use your personal OpenAI API key. Using fallback.";
-           }
+          errorMsg = "API Key is missing! Using fallback.";
+      } else if (knownPlaceholders.includes(apiKey as string)) { // Cast apiKey to string for comparison
+           useFallback = true;
+           errorMsg = "API Key is a placeholder! Please replace it with your actual key. Using fallback.";
+      } else if (typeof apiKey === 'string' && apiKey.startsWith(OLD_EXAMPLE_KEY_PREFIX)) { // Check if it's a string and starts with an old example prefix
+           useFallback = true;
+           errorMsg = "It looks like you're using an example project key. Please use your personal OpenAI API key. Using fallback.";
       }
 
-      if (useFallback) { 
+      if (useFallback) {
         console.error(errorMsg);
         setRitualError(`API Key setup needed. ${errorMsg}`);
         const fallbackSequence = exampleSequences[selectedRitualType];
@@ -260,7 +287,9 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
         setIsLoadingAIRitual(false);
         initializedTypeRef.current = selectedRitualType;
         setIsUsingFallback(true);
-        return; 
+        setIsFadingToFinale(false); // Ensure transition states are reset on fetch complete
+        setIsFadingInFinale(false); // Ensure transition states are reset on fetch complete
+        return;
       }
       // --- End of API Key Section ---
 
@@ -271,7 +300,16 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
           setCurrentRitualTitles(generatedRitual.titles);
           setCurrentRitualPractices(generatedRitual.descriptions);
           setRitualError(null);
-          setIsUsingFallback(false); 
+          setIsUsingFallback(false);
+          setIsFadingToFinale(false); // Ensure transition states are reset on fetch complete
+          setIsFadingInFinale(false); // Ensure transition states are reset on fetch complete
+          setIsLoadingAIRitual(false);
+          initializedTypeRef.current = selectedRitualType;
+          // Reset transition states here only if the fetch was successful and it's a new type
+          if(initializedTypeRef.current !== selectedRitualType) {
+            setIsFadingToFinale(false); 
+            setIsFadingInFinale(false); 
+          }
         })
         .catch(error => {
           console.error("AI Ritual Generation Failed (fetch caught), using fallback for type:", selectedRitualType, error);
@@ -280,63 +318,128 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
           if (fallbackSequence) {
             setCurrentRitualTitles(fallbackSequence.titles);
             setCurrentRitualPractices(fallbackSequence.practices);
-          } else { 
+          } else {
             setCurrentRitualTitles(["Error", "Unavailable", "Try Again", "Later"]);
             setCurrentRitualPractices(["Sequence not found.", "Please try another.", "Take a deep breath.", "Hope this helps."]);
           }
-          setIsUsingFallback(true); 
+          setIsUsingFallback(true);
+          setIsFadingToFinale(false); // Ensure transition states are reset on fetch complete
+          setIsFadingInFinale(false); // Ensure transition states are reset on fetch complete
         })
         .finally(() => {
           setIsLoadingAIRitual(false);
-          initializedTypeRef.current = selectedRitualType; 
+          initializedTypeRef.current = selectedRitualType;
         });
     }
-  }, [selectedRitualType, exampleSequences]); // Added missing dependencies from inside the hook
+  }, [selectedRitualType, exampleSequences]); // ADD showFinal
 
   // Effect to handle step transitions when practice is active
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
+    // Clear any existing interval first
+    if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
 
-    if (isPracticeActive) {
-      // Clear any existing interval first if restarting practice
-      if (intervalId) clearInterval(intervalId);
-      if (timeoutId) clearTimeout(timeoutId);
-
-      // Start the interval for step transitions
-      intervalId = setInterval(() => {
+    if (isPracticeActive && currentRitualPractices.length > 0) {
+      stepIntervalRef.current = setInterval(() => {
         setCurrentStepIndex(prevIndex => {
+          console.log(`Interval tick: prevIndex = ${prevIndex}, currentRitualPractices.length = ${currentRitualPractices.length}`);
           const nextIndex = prevIndex + 1;
           // Check if there's a next practice
           if (nextIndex < currentRitualPractices.length) {
             // Start fade out before updating text
             setIsTextFadingOut(true);
             // Use a timeout to change text after fade out starts
-            timeoutId = setTimeout(() => {
+            const textFadeTimeout = setTimeout(() => {
               setIsTextFadingOut(false); // Start fade in for new text
-            }, 700); // Match this duration to CSS transition duration (changed from 300)
+            }, 700); // Match this duration to CSS transition duration
+             // Clear previous timeout before setting a new one
+            if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+            fadeOutTimerRef.current = textFadeTimeout;
+
             return nextIndex;
           } else {
-            // All practices complete, clear the interval
-            setIsPracticeActive(false); // Optionally stop the practice/animation
+            // All practices complete, stop practice and trigger finale screen transition
+            setIsPracticeActive(false); // Stop the practice timer and animation
+
+            // Clear interval
+            if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+            stepIntervalRef.current = null;
+            // Clear any lingering text fade out timeout
+            if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+            fadeOutTimerRef.current = null;
+
+            // Trigger the finale screen visibility and transition
+            console.log("Transitioning to finale screen...");
+            setShowFinaleScreen(true); // Directly show the finale screen
+
             return prevIndex; // Stay on the last step
           }
         });
       }, 15000); // 15 seconds per step
-    } else {
-        // Clear interval and timeout if practice becomes inactive
-        if (intervalId) clearInterval(intervalId);
-        if (timeoutId) clearTimeout(timeoutId);
-        // Reset step index when practice is not active
-        setCurrentStepIndex(0);
     }
 
-    // Cleanup function to clear interval and timeout
+    // Cleanup function to clear the interval
     return () => {
-      if (intervalId) clearInterval(intervalId);
-      if (timeoutId) clearTimeout(timeoutId);
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+      stepIntervalRef.current = null;
+      // Also clear timeouts on cleanup
+      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+      if (fadeInTimerRef.current) clearTimeout(fadeInTimerRef.current);
+      if (finaleTimeoutRef.current) clearTimeout(finaleTimeoutRef.current); // Clear finale timeout
     };
-  }, [isPracticeActive, currentRitualPractices.length]); // Use currentRitualPractices.length
+  }, [isPracticeActive, currentRitualPractices.length]); // Dependencies
+
+  // Effect to manage fade transitions when showFinaleScreen changes
+  useEffect(() => {
+    // Clear previous transition timeouts
+    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    if (fadeInTimerRef.current) clearTimeout(fadeInTimerRef.current);
+
+    if (showFinaleScreen) {
+      // When showing finale screen, fade out ritual content first
+      setIsFadingToFinale(true);
+      fadeOutTimerRef.current = setTimeout(() => {
+        // After ritual content fades out, fade in finale content
+        setIsFadingToFinale(false); // Hide ritual content div
+        setIsFadingInFinale(true);
+        fadeInTimerRef.current = setTimeout(() => {
+          setIsFadingInFinale(false); // Finish fade-in transition
+        }, 500); // Match transition duration
+      }, 500); // Match transition duration
+    } else {
+      // When hiding finale screen, immediately show ritual content and hide finale content
+      setIsFadingToFinale(false);
+      setIsFadingInFinale(false);
+    }
+
+    // Cleanup for fade timers
+    return () => {
+      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+      if (fadeInTimerRef.current) clearTimeout(fadeInTimerRef.current);
+    };
+  }, [showFinaleScreen]); // Depends on showFinaleScreen state
+
+  // Handler for Start/Reset button (on ritual screen) and "To practice" button (on finale screen)
+  const handlePrimaryButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log(`--- Primary Button Clicked: ${showFinaleScreen ? 'To Practice' : (isPracticeActive ? 'Reset' : 'Start')} ---`);
+
+    if (showFinaleScreen) {
+      // If we're on finale screen, go back to launch screen
+      onGoBack();
+    } else {
+      // If on ritual screen, toggle practice state
+      setIsPracticeActive(!isPracticeActive);
+      // Reset step index when starting a new practice only if practice was inactive
+      if (!isPracticeActive) { // isPracticeActive is the state *before* toggling
+          setCurrentStepIndex(0);
+      }
+      // Ensure finale screen is hidden when starting/resetting practice
+      setShowFinaleScreen(false);
+      // Also reset transition states
+      setIsFadingToFinale(false);
+      setIsFadingInFinale(false);
+    }
+  };
 
   // Prevent scrolling on mount
   useEffect(() => {
@@ -349,13 +452,13 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
     };
   }, []); // Empty dependency array
 
-  // Add native event listener for debugging
+  // Add native event listener for debugging (optional, can be removed later)
   useEffect(() => {
     console.log(`+++ NATIVE EVENT LISTENER effect: MOUNT/RUN +++ Time: ${new Date().toLocaleTimeString()}`);
     const button = startButtonRef.current;
     if (button) {
       const nativeClickHandler = () => {
-        console.log("--- NATIVE Button Clicked ---");
+        console.log("--- NATIVE Start/Reset Button Clicked ---");
       };
       button.addEventListener('click', nativeClickHandler);
 
@@ -364,10 +467,8 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
         console.log(`--- NATIVE EVENT LISTENER effect: UNMOUNT/CLEANUP --- Time: ${new Date().toLocaleTimeString()}`);
         button.removeEventListener('click', nativeClickHandler);
       };
-    } else {
-        console.log("--- NATIVE EVENT LISTENER effect: Button ref not available ---");
     }
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  }, []); // Empty dependency array
 
   // --- Animation Configuration ---
   const animationDurationMs = 60000; // Target: 60 SECONDS
@@ -402,25 +503,28 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
 
   return (
     // 1. Outermost container - for positioning
-    <div className="h-screen w-screen overflow-hidden relative">
+    <div className="h-screen w-screen overflow-hidden relative bg-white">
 
       {/* 2. Static Background Waves (from LaunchScreen) - bottom layer */}
-      <WaveBackground /> {/* Render the imported component */}
+      <WaveBackground isHidden={showFinaleScreen} /> {/* Render the imported component, hiding it when finale screen is shown */}
 
       {/* 3. Semi-transparent white overlay - covers the static waves */}
       <div className="absolute inset-0 w-full h-full bg-white bg-opacity-10 z-10"></div>
 
       {/* 4. All your existing RitualScreen content - now sits on top of the overlay */}
       {/* This wrapper helps manage z-stacking for content over the overlay */}
-      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center z-20">
+      <div className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center z-20 pb-10 transition-opacity duration-500 ease-in-out ${showFinaleScreen ? (isFadingInFinale ? 'opacity-0' : 'opacity-100') : (isFadingToFinale ? 'opacity-0' : 'opacity-100')}`} style={{ pointerEvents: showFinaleScreen ? 'auto' : 'none' }}>
         
-        {/* Back button - now inside the content wrapper */}
+        {/* Back button - always visible */}
+        {!showFinaleScreen && (
         <button
           className="absolute top-6 left-6 px-2 py-1 bg-white text-[#b48559] rounded z-30"
           onClick={onGoBack}
+          style={{ pointerEvents: 'auto' }}
         >
           Back
         </button>
+        )}
         
         {/* Blue filling wave container - should be above the z-10 overlay */}
         <div
@@ -446,50 +550,87 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
           </svg>
         </div>
 
-        {/* Centered text content - now inside the content wrapper */}
-        <div className="relative flex flex-col items-center justify-center p-4 text-center pointer-events-none z-20 pb-10"> {/* Added pb-10 */}
-          <h2 className="font-nunito text-4xl font-extrabold text-slate-700 text-center mb-20">{screenTitle}</h2>
-          
-          {isLoadingAIRitual && <p>Crafting an unique practice for you</p>}
-          {ritualError && <p className="text-red-500">Error: {ritualError}</p>}
-
-          {!isLoadingAIRitual && !ritualError && currentRitualPractices.length > 0 && (
-            <>
-              {currentRitualTitles.length > 0 && (
-                <h3 className={`font-nunito text-2xl font-extrabold text-slate-700 mb-2 transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
-                  {currentRitualTitles[currentStepIndex]}
-                </h3>
-              )}
-              <p className={`font-nunito text-2xl text-slate-700 mt-2 mx-6 font-semibold transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
-                {currentRitualPractices[currentStepIndex]}
+        {/* Conditional rendering for main content area */}
+        {/* Apply opacity based on transition states */}
+        {/* Ensure pointer-events are handled correctly based on which content is showing */}
+        <div className={`flex flex-col items-center justify-center text-center z-20 transition-opacity duration-500 ease-in-out ${showFinaleScreen ? `w-screen h-screen bg-white ${isFadingInFinale ? 'opacity-0' : 'opacity-100'}` : `w-full p-4 pb-10 ${isFadingToFinale ? 'opacity-0' : 'opacity-100'}`}`} style={{ pointerEvents: showFinaleScreen ? 'auto' : 'none' }}>
+          {/* Content rendered based on showFinaleScreen state */}
+          {showFinaleScreen ? (
+            <div className={`flex flex-col items-center justify-center w-screen h-screen bg-white ${isFadingInFinale ? 'opacity-0' : 'opacity-100'}`} style={{ pointerEvents: 'auto' }}>
+              {/* Completion Text */}
+              <h1 className="text-2xl font-nunito text-slate-700 text-center font-extrabold mb-4">
+                Mindfulness Boost<br />
+                Completed
+              </h1>
+              {/* Thank you text */}
+              <p className="text-lg font-nunito text-slate-600 text-center mb-8">
+                Thank you.
               </p>
-            </>
-          )}
 
-          {!isLoadingAIRitual && !ritualError && currentRitualPractices.length === 4 && (
-            <div className="flex justify-center mt-8 space-x-2">
-              {Array(4).fill(0).map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-3 h-3 rounded-full ${index === currentStepIndex ? 'bg-slate-700' : 'bg-slate-700/50'}`}
-                ></div>
-              ))}
+              {/* Lotus Flower Image - Moved below text */}
+              <img
+                src="/images/lotus image.png"
+                alt="Lotus Flower"
+                className="mx-auto w-48 h-48 mb-8 -mt-4"
+              />
+
             </div>
+          ) : (
+            <>
+              {/* Original Ritual Screen Content */}
+              <h2 className="font-nunito text-4xl font-extrabold text-slate-700 text-center mb-20">{screenTitle}</h2>
+
+              {isLoadingAIRitual && <p>Crafting an unique practice for you</p>}
+              {ritualError && <p className="text-red-500">Error: {ritualError}</p>}
+
+              {!isLoadingAIRitual && !ritualError && currentRitualPractices.length > 0 && (
+                <>
+                  {currentRitualTitles.length > 0 && (
+                    <h3 className={`font-nunito text-2xl font-extrabold text-slate-700 mb-2 transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
+                      {currentRitualTitles[currentStepIndex]}
+                    </h3>
+                  )}
+                  <p className={`font-nunito text-2xl text-slate-700 mt-2 mx-6 font-semibold transition-opacity transition-filter duration-700 ease-in-out ${isTextFadingOut ? 'opacity-0 blur-sm' : 'opacity-100 blur-0'}`}>
+                    {currentRitualPractices[currentStepIndex]}
+                  </p>
+                </>
+              )}
+
+              {!isLoadingAIRitual && !ritualError && currentRitualPractices.length === 4 && (
+                <div className="flex justify-center mt-8 space-x-2">
+                  {Array(4).fill(0).map((_, index) => (
+                    <div
+                      key={index}
+                      className={`w-3 h-3 rounded-full ${index === currentStepIndex ? 'bg-slate-700' : 'bg-slate-700/50'}`}
+                    ></div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Test button - now inside the content wrapper */}
-        <button
-          ref={startButtonRef}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 px-2 py-2 bg-slate-700 text-white rounded-full z-50 w-20 h-20 text-xl font-bold shadow-md"
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log("--- REACT Button Clicked ---");
-            setIsPracticeActive(!isPracticeActive);
-          }}
-        >
-          {isPracticeActive ? "Reset" : "Start"}
-        </button>
+        {/* Start/Reset button - positioned absolutely, hidden when showing finale screen */}
+        {!showFinaleScreen && (
+            <button
+              ref={startButtonRef}
+              className={`absolute bottom-12 left-1/2 -translate-x-1/2 px-2 py-2 bg-slate-700 text-white rounded-full z-50 w-20 h-20 text-xl font-bold shadow-md transition-opacity duration-500 ease-in-out ${isFadingToFinale ? 'opacity-0' : 'opacity-100'}`}
+              onClick={handlePrimaryButtonClick}
+              style={{ pointerEvents: 'auto' }}
+            >
+              {isPracticeActive ? "Reset" : "Start"}
+            </button>
+          )}
+
+        {/* To practice button - positioned absolutely at the bottom, only shown when showing finale screen */}
+        {showFinaleScreen && (
+            <button
+              className="absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-slate-700 text-white py-3 px-6 min-w-[150px] text-lg font-nunito font-semibold shadow-md hover:bg-slate-800 transition z-50"
+              onClick={handlePrimaryButtonClick}
+            >
+              To practice
+            </button>
+          )}
       </div>
 
     </div>

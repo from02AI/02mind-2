@@ -1,7 +1,14 @@
 import React from 'react';
 
-const WaveBackground: React.FC = () => (
-  <div className="fixed inset-0 w-full h-full z-0 pointer-events-none">
+interface WaveBackgroundProps {
+  isHidden?: boolean;
+}
+
+const WaveBackground: React.FC<WaveBackgroundProps> = ({ isHidden = false }) => (
+  <div
+    className="fixed inset-0 w-full h-full z-0 pointer-events-none"
+    style={{ display: isHidden ? 'none' : 'block' }}
+  >
     <svg
       viewBox="0 0 375 812"
       fill="none"
