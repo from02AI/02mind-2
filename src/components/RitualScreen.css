@@ -1,0 +1,41 @@
+.transition-container {
+  position: relative;
+  width: 100%; /* Ensure the container has a width */
+  height: 150px; /* Give the container a fixed height to prevent content jumping */
+}
+
+.practice-content {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  /* Ensure content is centered within the absolute positioned div */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Entering transition */
+.practice-slide-enter {
+  opacity: 0;
+  transform: translateX(-100%); /* Start from the left */
+}
+
+.practice-slide-enter-active {
+  opacity: 1;
+  transform: translateX(0); /* Move to the center */
+  transition: opacity 700ms ease-in-out, transform 700ms ease-in-out;
+}
+
+/* Exiting transition */
+.practice-slide-exit {
+  opacity: 1;
+  transform: translateX(0); /* Start from the center */
+}
+
+.practice-slide-exit-active {
+  opacity: 0;
+  transform: translateX(100%); /* Move to the right */
+  transition: opacity 700ms ease-in-out, transform 700ms ease-in-out;
+} 
