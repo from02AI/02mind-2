@@ -250,7 +250,7 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
       // Replace "YOUR_VALID_OPENAI_API_KEY_HERE" with your actual OpenAI API key.
       // For development, you can hardcode it here TEMPORARILY.
       // For production, use environment variables to keep your key secure.
-      const apiKey = "import.meta.env.VITE_OPENAI_API_KEY";
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
       // Example of a placeholder often used in tutorials (DO NOT USE THIS EXAMPLE KEY FOR ACTUAL CALLS):
       const OPENAI_API_KEY_PLACEHOLDER = "sk-YOUR_OPENAI_API_KEY_HERE";
       const OLD_EXAMPLE_KEY_PREFIX = "sk-proj-rJ2"; // Define the old example key prefix
