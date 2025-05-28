@@ -328,18 +328,31 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
 
     if (isPracticeActive && currentRitualPractices.length > 0) {
       stepIntervalRef.current = setInterval(() => {
+        console.log(`Audio enabled state before gong check: ${isAudioEnabled}`);
+        // Play gong for the END of the practice that just finished
+        if (isAudioEnabled) {
+          // Check if this is the end of the LAST practice (index 3)
+          if (currentStepIndex === currentRitualPractices.length - 1) { // Reached the end (index 3) --> play double gong
+            console.log("Playing double gong for ritual completion...");
+            const gong1 = new Audio('/sounds/gong.mp3');
+            gong1.play();
+            setTimeout(() => {
+              const gong2 = new Audio('/sounds/gong.mp3');
+              gong2.play();
+            }, 500);
+          } else { // Otherwise, play single gong for intermediate practices
+            console.log("Playing single gong...");
+            const gong = new Audio('/sounds/gong.mp3');
+            gong.play();
+          }
+        }
+
         setCurrentStepIndex(prevIndex => {
           console.log(`Interval tick: prevIndex = ${prevIndex}, currentRitualPractices.length = ${currentRitualPractices.length}`);
           const nextIndex = prevIndex + 1;
           // Check if there's a next practice
           if (nextIndex < currentRitualPractices.length) {
             // Start fade out before updating text
-            // Play subtle gong sound if audio is enabled
-            if (isAudioEnabled) {
-              const gong = new Audio('/sounds/gong.wav');
-              gong.play();
-            }
-
             setIsTextFadingOut(true);
             // Use a timeout to change text after fade out starts
             const textFadeTimeout = setTimeout(() => {
@@ -352,16 +365,6 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
             return nextIndex;
           } else {
             // All practices complete, stop practice and trigger finale screen transition
-            // Play gong twice at the end if audio is enabled
-            if (isAudioEnabled) {
-              const gong = new Audio('/sounds/gong.wav');
-              gong.play();
-              setTimeout(() => {
-                const secondGong = new Audio('/sounds/gong.wav');
-                secondGong.play();
-              }, 500); // Play second gong after a short delay
-            }
-
             setIsPracticeActive(false); // Stop the practice timer and animation
 
             // Clear interval
@@ -390,7 +393,7 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
       if (fadeInTimerRef.current) clearTimeout(fadeInTimerRef.current);
       if (finaleTimeoutRef.current) clearTimeout(finaleTimeoutRef.current); // Clear finale timeout
     };
-  }, [isPracticeActive, currentRitualPractices.length]); // Dependencies
+  }, [isPracticeActive, currentRitualPractices.length, isAudioEnabled]); // Dependencies: Added isAudioEnabled
 
   // Handler for Start/Reset button (on ritual screen) and "To practice" button (on finale screen)
   const handlePrimaryButtonClick = (e: React.MouseEvent) => {
@@ -528,10 +531,21 @@ const RitualScreen: React.FC<RitualScreenProps> = ({ selectedRitualType, onGoBac
 
           {/* Audio Toggle Button */}
           <button
-            className="absolute top-6 right-6 px-2 py-1 bg-white text-[#b48559] rounded z-30"
+            className="absolute top-6 right-6 px-2 py-1 bg-white text-[#b48559] rounded z-30 flex items-center justify-center w-8 h-8"
             onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+            aria-label={isAudioEnabled ? 'Turn Audio Off' : 'Turn Audio On'}
           >
-            Audio {isAudioEnabled ? 'OFF' : 'ON'}
+            {isAudioEnabled ? (
+              // Speaker ON icon (example SVG)
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M18.5 12c0-1.75-1-3.34-2.75-4.03v8.05c1.75-.69 2.75-2.3 2.75-4.02zM5 10v4h3l4 4V6l-4 4H5zm10.5-4.13v12.25c2.7-.91 4.5-3.5 4.5-6.12s-1.8-5.21-4.5-6.13z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              // Speaker OFF icon (example SVG)
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M9.385 8.5c.015.03.03.058.045.087l7.797-7.797.707.707-7.797 7.797c.029.015.057.03.087.045zM16.873 13.513l2.914 2.914.707-.707-2.914-2.914a3.5 3.5 0 010 .707zM5 10v4h3l4 4V6l-4 4H5zm14.586-1.414a.5.5 0 010 .707L16.873 12l2.713 2.713a.5.5 0 01-.707.707L16.166 12.7l-2.713 2.713a.5.5 0 01-.707-.707L15.459 12l-2.713-2.713a.5.5 0 01.707-.707z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
 
           {isLoadingAIRitual && <p>Crafting an unique practice for you</p>}
